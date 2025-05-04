@@ -1,8 +1,6 @@
 version: '3'
 
 tasks:
-  gen:proto: buf generate
-
   build: go build -v ./...
 
   test: go test -v ./...
