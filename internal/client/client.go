@@ -2,13 +2,13 @@ package client
 
 import (
 	"context"
-	"go.brij.fi/protos/brij/storage/v1/verifier"
+	"go.brij.fi/protos/brij/storage/v1/partner"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
 type Client struct {
-	verifier.VerifierServiceClient
+	partner.PartnerServiceClient
 	conn *grpc.ClientConn
 }
 
@@ -22,8 +22,8 @@ func New(host string, token string) (*Client, error) {
 	}
 
 	client := &Client{
-		VerifierServiceClient: verifier.NewVerifierServiceClient(conn),
-		conn:                  conn,
+		PartnerServiceClient: partner.NewPartnerServiceClient(conn),
+		conn:                 conn,
 	}
 
 	return client, nil

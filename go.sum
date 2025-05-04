@@ -37,6 +37,8 @@ github.com/onsi/ginkgo v1.7.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+W
 github.com/onsi/gomega v1.4.3/go.mod h1:ex+gbHU/CVuBBDIJjb2X0qEXbFg53c61hWP/1CpauHY=
 go.brij.fi/protos v0.1.0 h1:A9bUAuBEfuE1UNZue8BAGOVGySphjvH/2VR0RjAbiYw=
 go.brij.fi/protos v0.1.0/go.mod h1:a9FX3GmRSzqpTo9IdkSQgsMLT0Wk23qsw+UiawKEY8A=
+go.brij.fi/protos v0.3.0 h1:ZNne3YbrjKYH4UKMKKCFrKC3zIwZ2JVtdM8GR3BlE+o=
+go.brij.fi/protos v0.3.0/go.mod h1:a9FX3GmRSzqpTo9IdkSQgsMLT0Wk23qsw+UiawKEY8A=
 go.opentelemetry.io/auto/sdk v1.1.0 h1:cH53jehLUN6UFLY71z+NDOiNJqDdPRaXzTel0sJySYA=
 go.opentelemetry.io/auto/sdk v1.1.0/go.mod h1:3wSPjt5PWp2RhlCcmmOial7AvC4DQqZb7a7wCow3W8A=
 go.opentelemetry.io/otel v1.34.0 h1:zRLXxLCgL1WyKsPVrgbSdMN4c0FMkDAskSTQP+0hdUY=

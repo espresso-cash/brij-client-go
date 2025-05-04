@@ -7,7 +7,7 @@ require (
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/golang/protobuf v1.5.4
-	go.brij.fi/protos v0.1.0
+	go.brij.fi/protos v0.3.0
 	golang.org/x/crypto v0.37.0
 	google.golang.org/grpc v1.72.0
 )

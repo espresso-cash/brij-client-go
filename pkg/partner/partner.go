@@ -10,7 +10,7 @@ import (
 	"go.brij.fi/client/internal/client"
 	"go.brij.fi/client/internal/encryption"
 	"go.brij.fi/protos/brij/storage/v1/common"
-	"go.brij.fi/protos/brij/storage/v1/verifier"
+	"go.brij.fi/protos/brij/storage/v1/partner"
 )
 
 type Client interface {
@@ -18,7 +18,7 @@ type Client interface {
 	SetValidationResult(ctx context.Context, dataId string, user ed25519.PublicKey, hash string, status common.ValidationStatus) error
 	Encrypt(ctx context.Context, user ed25519.PublicKey, data []byte) (encrypted []byte, hash string, err error)
 	CreateKycStatus(ctx context.Context, input *common.KycItem) (string, error)
-	GetKycStatus(ctx context.Context, input *GetKycStatusInput) (*verifier.GetKycStatusResponse, error)
+	GetKycStatus(ctx context.Context, input *GetKycStatusInput) (*partner.GetKycStatusResponse, error)
 	UpdateKycStatus(ctx context.Context, input *UpdateKycStatusInput) error
 	Close() error
 	PublicKey() ed25519.PublicKey
@@ -84,7 +84,7 @@ func (c *kycPartnerClient) GetData(ctx context.Context, userPK ed25519.PublicKey
 	result := map[string]*ValidatedData{}
 	validationMap := map[string]*common.ValidationDataField{}
 
-	rawData, err := c.apiClient.GetUserData(ctx, &verifier.GetUserDataRequest{
+	rawData, err := c.apiClient.GetUserData(ctx, &partner.GetUserDataRequest{
 		UserPublicKey: base58.Encode(userPK),
 		IncludeValues: true,
 	})
@@ -132,7 +132,7 @@ func (c *kycPartnerClient) SetValidationResult(
 ) error {
 	signature := encryption.SignMessage(c.privateKey, []byte(fmt.Sprintf("%s|%s|%s|%s", dataId, base58.Encode(user), hash, status)))
 
-	in := &verifier.SetValidationDataRequest{
+	in := &partner.SetValidationDataRequest{
 		DataId:    dataId,
 		Status:    status,
 		Hash:      hash,
@@ -168,7 +168,7 @@ func (c *kycPartnerClient) CreateKycStatus(ctx context.Context, input *common.Ky
 
 	signature := encryption.SignMessage(c.privateKey, data)
 
-	in := &verifier.CreateKycStatusRequest{
+	in := &partner.CreateKycStatusRequest{
 		Data:      data,
 		Signature: signature,
 	}
@@ -181,8 +181,8 @@ func (c *kycPartnerClient) CreateKycStatus(ctx context.Context, input *common.Ky
 	return resp.KycId, nil
 }
 
-func (c *kycPartnerClient) GetKycStatus(ctx context.Context, input *GetKycStatusInput) (*verifier.GetKycStatusResponse, error) {
-	in := &verifier.GetKycStatusRequest{
+func (c *kycPartnerClient) GetKycStatus(ctx context.Context, input *GetKycStatusInput) (*partner.GetKycStatusResponse, error) {
+	in := &partner.GetKycStatusRequest{
 		Country:            input.Country,
 		ValidatorPublicKey: base58.Encode(c.publicKey),
 		UserPublicKey:      base58.Encode(input.UserPK),
@@ -204,7 +204,7 @@ func (c *kycPartnerClient) UpdateKycStatus(ctx context.Context, input *UpdateKyc
 
 	signature := encryption.SignMessage(c.privateKey, data)
 
-	in := &verifier.UpdateKycStatusRequest{
+	in := &partner.UpdateKycStatusRequest{
 		KycId:     input.KycID,
 		Data:      data,
 		Signature: signature,
@@ -219,7 +219,7 @@ func (c *kycPartnerClient) UpdateKycStatus(ctx context.Context, input *UpdateKyc
 }
 
 func (c *kycPartnerClient) secretKey(ctx context.Context, user ed25519.PublicKey) ([32]byte, error) {
-	rawData, err := c.apiClient.GetInfo(ctx, &verifier.GetInfoRequest{PublicKey: base58.Encode(user)})
+	rawData, err := c.apiClient.GetInfo(ctx, &partner.GetInfoRequest{PublicKey: base58.Encode(user)})
 	if err != nil {
 		return [32]byte{}, err
 	}
