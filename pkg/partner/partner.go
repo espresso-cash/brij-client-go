@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/golang/protobuf/proto"
 	"go.brij.fi/client/internal/client"
 	"go.brij.fi/client/internal/encryption"
 	"go.brij.fi/protos/brij/storage/v1/common"
 	"go.brij.fi/protos/brij/storage/v1/partner"
+	"google.golang.org/protobuf/proto"
 )
 
 type Client interface {
