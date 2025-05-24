@@ -2,51 +2,42 @@ package client
 
 import (
 	"context"
-	"go.brij.fi/protos/brij/storage/v1/partner"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
+	"net/http"
+
+	"connectrpc.com/connect"
+	"go.brij.fi/protos/brij/storage/v1/partner/partnerconnect"
 )
 
 type Client struct {
-	partner.PartnerServiceClient
-	conn *grpc.ClientConn
+	partnerconnect.PartnerServiceClient
 }
 
 func New(host string, token string) (*Client, error) {
-	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(nil)))
-	opts = append(opts, grpc.WithPerRPCCredentials(NewBearerToken(token)))
-	conn, err := grpc.NewClient(host, opts...)
-	if err != nil {
-		return nil, err
-	}
-
 	client := &Client{
-		PartnerServiceClient: partner.NewPartnerServiceClient(conn),
-		conn:                 conn,
+		PartnerServiceClient: partnerconnect.NewPartnerServiceClient(
+			http.DefaultClient,
+			host,
+			connect.WithInterceptors(newAuthInterceptor(token)),
+		),
 	}
 
 	return client, nil
 }
 
 func (c *Client) Close() error {
-	return c.conn.Close()
+	return c.Close()
 }
 
-type bearerToken struct {
-	token string
-}
+func newAuthInterceptor(token string) connect.UnaryInterceptorFunc {
+	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(
+			ctx context.Context,
+			req connect.AnyRequest,
+		) (connect.AnyResponse, error) {
+			req.Header().Set("Authorization", "Bearer "+token)
 
-func (b *bearerToken) GetRequestMetadata(_ context.Context, _ ...string) (map[string]string, error) {
-	return map[string]string{
-		"authorization": "Bearer " + b.token,
-	}, nil
-}
-
-func (b *bearerToken) RequireTransportSecurity() bool {
-	return false
-}
-
-func NewBearerToken(token string) credentials.PerRPCCredentials {
-	return &bearerToken{token: token}
+			return next(ctx, req)
+		}
+	}
+	return interceptor
 }

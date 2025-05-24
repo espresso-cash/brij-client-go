@@ -2,8 +2,9 @@ package encryption
 
 import (
 	"crypto/ed25519"
-	"github.com/btcsuite/btcutil/base58"
 	"testing"
+
+	"github.com/btcsuite/btcutil/base58"
 )
 
 func TestDecodeSecretKey(t *testing.T) {
@@ -40,14 +41,16 @@ func TestDecodeSecretKey(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			secretKey, err := DecodeSecretKey(tc.encryptedSecretKey, tc.publicKey, privateKey)
-			if (err != nil) != tc.expectErr {
-				t.Fatalf("expected error: %v, got: %v", tc.expectErr, err)
-			}
-			if !tc.expectErr && base58.Encode(secretKey[:]) != tc.expected {
-				t.Fatalf("expected: %v, got: %v", tc.expected, secretKey)
-			}
-		})
+		t.Run(
+			tc.name, func(t *testing.T) {
+				secretKey, err := DecodeSecretKey(tc.encryptedSecretKey, tc.publicKey, privateKey)
+				if (err != nil) != tc.expectErr {
+					t.Fatalf("expected error: %v, got: %v", tc.expectErr, err)
+				}
+				if !tc.expectErr && base58.Encode(secretKey[:]) != tc.expected {
+					t.Fatalf("expected: %v, got: %v", tc.expected, secretKey)
+				}
+			},
+		)
 	}
 }
