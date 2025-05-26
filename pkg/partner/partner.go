@@ -23,7 +23,6 @@ type Client interface {
 	CreateKycStatus(ctx context.Context, input *common.KycEnvelope) (string, error)
 	GetKycStatus(ctx context.Context, input *GetKycStatusInput) (*common.KycEnvelope, error)
 	UpdateKycStatus(ctx context.Context, input *UpdateKycStatusInput) error
-	Close() error
 	PublicKey() ed25519.PublicKey
 }
 
@@ -73,10 +72,6 @@ func New(privateKey ed25519.PrivateKey, host string) (Client, error) {
 	}
 
 	return c, nil
-}
-
-func (c *kycPartnerClient) Close() error {
-	return c.apiClient.Close()
 }
 
 func (c *kycPartnerClient) PublicKey() ed25519.PublicKey {

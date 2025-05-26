@@ -24,10 +24,6 @@ func New(host string, token string) (*Client, error) {
 	return client, nil
 }
 
-func (c *Client) Close() error {
-	return c.Close()
-}
-
 func newAuthInterceptor(token string) connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return func(
