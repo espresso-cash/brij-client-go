@@ -7,7 +7,7 @@ require (
 	filippo.io/edwards25519 v1.1.0
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/golang-jwt/jwt/v5 v5.2.2
-	go.brij.fi/protos v0.14.0
+	go.brij.fi/protos v0.15.0
 	golang.org/x/crypto v0.38.0
 	google.golang.org/protobuf v1.36.6
 )
