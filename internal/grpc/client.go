@@ -5,19 +5,19 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
-	orderswallet "go.brij.fi/protos/brij/orders/v1/wallet/walletconnect"
-	storagepartner "go.brij.fi/protos/brij/storage/v1/partner/partnerconnect"
-	storagewallet "go.brij.fi/protos/brij/storage/v1/wallet/walletconnect"
+	owc "go.brij.fi/protos/brij/orders/v1/wallet/walletconnect"
+	spc "go.brij.fi/protos/brij/storage/v1/partner/partnerconnect"
+	swc "go.brij.fi/protos/brij/storage/v1/wallet/walletconnect"
 	"go.brij.fi/protos/brij/verifier/v1/v1connect"
 )
 
 type Client struct {
-	storagepartner.PartnerServiceClient
+	spc.PartnerServiceClient
 }
 
 func NewClient(host string, token string) (*Client, error) {
 	client := &Client{
-		PartnerServiceClient: storagepartner.NewPartnerServiceClient(
+		PartnerServiceClient: spc.NewPartnerServiceClient(
 			http.DefaultClient,
 			host,
 			connect.WithInterceptors(newAuthInterceptor(token)),
@@ -27,8 +27,8 @@ func NewClient(host string, token string) (*Client, error) {
 	return client, nil
 }
 
-func NewWalletStorageClient(host string, token string) storagewallet.WalletServiceClient {
-	return storagewallet.NewWalletServiceClient(
+func NewWalletStorageClient(host string, token string) swc.WalletServiceClient {
+	return swc.NewWalletServiceClient(
 		http.DefaultClient, host,
 		connect.WithInterceptors(newAuthInterceptor(token)),
 	)
@@ -41,8 +41,8 @@ func NewVerifierClient(host string, token string) v1connect.VerifierServiceClien
 	)
 }
 
-func NewWalletOrdersClient(host string, token string) orderswallet.WalletServiceClient {
-	return orderswallet.NewWalletServiceClient(
+func NewWalletOrdersClient(host string, token string) owc.WalletServiceClient {
+	return owc.NewWalletServiceClient(
 		http.DefaultClient, host,
 		connect.WithInterceptors(newAuthInterceptor(token)),
 	)
