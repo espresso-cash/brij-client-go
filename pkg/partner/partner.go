@@ -12,8 +12,9 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"go.brij.fi/client/internal/client"
 	"go.brij.fi/client/internal/encryption"
+	"go.brij.fi/client/internal/grpc"
+	"go.brij.fi/client/pkg/config"
 )
 
 type Client interface {
@@ -30,7 +31,7 @@ type kycPartnerClient struct {
 	privateKey ed25519.PrivateKey
 	publicKey  ed25519.PublicKey
 	token      string
-	apiClient  *client.Client
+	apiClient  *grpc.Client
 }
 
 type ValidatedData struct {
@@ -50,7 +51,7 @@ type UpdateKycStatusInput struct {
 	Data  *common.KycEnvelope
 }
 
-func New(privateKey ed25519.PrivateKey, host string) (Client, error) {
+func NewClient(privateKey ed25519.PrivateKey, host string) (Client, error) {
 	c := &kycPartnerClient{
 		privateKey: privateKey,
 		publicKey:  privateKey.Public().(ed25519.PublicKey),
@@ -58,7 +59,7 @@ func New(privateKey ed25519.PrivateKey, host string) (Client, error) {
 
 	token := jwt.NewWithClaims(
 		jwt.SigningMethodEdDSA,
-		jwt.MapClaims{"iss": base58.Encode(c.publicKey), "aud": "storage.brij.fi"},
+		jwt.MapClaims{"iss": base58.Encode(c.publicKey), "aud": config.AudStorage},
 	)
 	tokenString, err := token.SignedString(c.privateKey)
 	if err != nil {
@@ -66,7 +67,7 @@ func New(privateKey ed25519.PrivateKey, host string) (Client, error) {
 	}
 
 	c.token = tokenString
-	c.apiClient, err = client.New(host, tokenString)
+	c.apiClient, err = grpc.NewClient(host, tokenString)
 	if err != nil {
 		return nil, err
 	}
