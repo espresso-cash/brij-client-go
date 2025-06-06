@@ -8,8 +8,10 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"io"
 
 	"filippo.io/edwards25519"
+	"golang.org/x/crypto/hkdf"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/nacl/secretbox"
 )
@@ -126,4 +128,30 @@ func convertEd25519PrivateKeyToX25519(ed25519PrivateKey ed25519.PrivateKey) [32]
 	x25519PrivateKey[31] &= 127
 	x25519PrivateKey[31] |= 64
 	return x25519PrivateKey
+}
+
+// DeriveMasterSecretKey derives a 32-byte symmetric key from an Ed25519 private key seed (32 bytes).
+// The derived key can be used to encrypt/decrypt user data.
+func DeriveMasterSecretKey(authPrivSeed []byte) ([]byte, error) {
+	if len(authPrivSeed) != ed25519.SeedSize {
+		return nil, errors.New("invalid seed length")
+	}
+
+	// Derive full keypair from seed
+	authPriv := ed25519.NewKeyFromSeed(authPrivSeed)
+	authPub := authPriv.Public().(ed25519.PublicKey)
+
+	// Create HKDF reader
+	salt := authPub
+	info := []byte("v1")
+	h := hkdf.New(sha256.New, authPriv.Seed(), salt, info)
+
+	// Read 32-byte key
+	var masterSecretKey [32]byte
+	_, err := io.ReadFull(h, masterSecretKey[:])
+	if err != nil {
+		return nil, err
+	}
+
+	return masterSecretKey[:], nil
 }

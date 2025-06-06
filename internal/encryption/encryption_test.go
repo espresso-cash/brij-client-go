@@ -54,3 +54,19 @@ func TestDecodeSecretKey(t *testing.T) {
 		)
 	}
 }
+
+func TestDeriveMasterSecretKey(t *testing.T) {
+	t.Run(
+		"success", func(t *testing.T) {
+			seed := base58.Decode("59i6Cc3fHTfTKmj1cta7mXugDtYwvHkCvjjv8ppzzSJW")
+			masterKey, err := DeriveMasterSecretKey(seed)
+			if err != nil {
+				t.Fatalf("expected no error, got: %v", err)
+			}
+			expectedKey := "6PNcp9qGCsd4mU3QbBKXjf8dgjdcDS7GKyUCVXtF1k5v"
+			if base58.Encode(masterKey) != expectedKey {
+				t.Fatalf("expected master key: %s, got: %s", expectedKey, base58.Encode(masterKey))
+			}
+		},
+	)
+}
