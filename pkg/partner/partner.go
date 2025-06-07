@@ -7,10 +7,10 @@ import (
 	"connectrpc.com/connect"
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/golang-jwt/jwt/v5"
-	"go.brij.fi/protos/brij/storage/v1/common"
+	opc "go.brij.fi/protos/brij/orders/v1/partner/partnerconnect"
+	storagecommon "go.brij.fi/protos/brij/storage/v1/common"
 	"go.brij.fi/protos/brij/storage/v1/partner"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
+	spc "go.brij.fi/protos/brij/storage/v1/partner/partnerconnect"
 
 	"go.brij.fi/client/internal/encryption"
 	"go.brij.fi/client/internal/grpc"
@@ -18,37 +18,31 @@ import (
 )
 
 type Client interface {
-	GetData(ctx context.Context, userPK ed25519.PublicKey) (map[string]*ValidatedData, error)
-	SetValidationResult(ctx context.Context, hash string, status common.ValidationStatus) error
-	Encrypt(ctx context.Context, user ed25519.PublicKey, data []byte) (encrypted []byte, hash string, err error)
-	CreateKycStatus(ctx context.Context, input *common.KycEnvelope) (string, error)
-	GetKycStatus(ctx context.Context, input *GetKycStatusInput) (*common.KycEnvelope, error)
-	UpdateKycStatus(ctx context.Context, input *UpdateKycStatusInput) error
 	PublicKey() ed25519.PublicKey
+
+	GetData(ctx context.Context, userPK ed25519.PublicKey) (map[string]*ValidatedData, error)
+	SetValidationResult(ctx context.Context, hash string, status storagecommon.ValidationStatus) error
+	Encrypt(ctx context.Context, user ed25519.PublicKey, data []byte) (encrypted []byte, hash string, err error)
+	CreateKycStatus(ctx context.Context, input *storagecommon.KycEnvelope) (string, error)
+	GetKycStatus(ctx context.Context, input *GetKycStatusInput) (*storagecommon.KycEnvelope, error)
+	UpdateKycStatus(ctx context.Context, input *UpdateKycStatusInput) error
+
+	GetOrder(ctx context.Context, input *GetOrderInput) (*Order, error)
+	RejectOrder(ctx context.Context, in *RejectOrderInput) error
+	AcceptOnRampOrder(ctx context.Context, in *AcceptOnRampOrderInput) error
+	AcceptOffRampOrder(ctx context.Context, in *AcceptOffRampOrderInput) error
+	FailOrder(ctx context.Context, in *FailOrderInput) error
+	CompleteOnRampOrder(ctx context.Context, in *CompleteOnRampOrderInput) error
+	CompleteOffRampOrder(ctx context.Context, in *CompleteOffRampOrderInput) error
 }
 
 type kycPartnerClient struct {
 	privateKey ed25519.PrivateKey
 	publicKey  ed25519.PublicKey
 	token      string
-	apiClient  *grpc.Client
-}
 
-type ValidatedData struct {
-	UserData []byte
-	Status   common.ValidationStatus
-	Hash     string
-	Type     common.DataType
-}
-
-type GetKycStatusInput struct {
-	Country string
-	UserPK  ed25519.PublicKey
-}
-
-type UpdateKycStatusInput struct {
-	KycID string
-	Data  *common.KycEnvelope
+	storageClient spc.PartnerServiceClient
+	ordersClient  opc.PartnerServiceClient
 }
 
 func NewClient(privateKey ed25519.PrivateKey, host string) (Client, error) {
@@ -67,10 +61,8 @@ func NewClient(privateKey ed25519.PrivateKey, host string) (Client, error) {
 	}
 
 	c.token = tokenString
-	c.apiClient, err = grpc.NewClient(host, tokenString)
-	if err != nil {
-		return nil, err
-	}
+	c.storageClient = grpc.NewPartnerStorageClient(host, tokenString)
+	c.ordersClient = grpc.NewPartnerOrdersClient(host, tokenString)
 
 	return c, nil
 }
@@ -79,176 +71,12 @@ func (c *kycPartnerClient) PublicKey() ed25519.PublicKey {
 	return c.publicKey
 }
 
-func (c *kycPartnerClient) GetData(ctx context.Context, userPK ed25519.PublicKey) (map[string]*ValidatedData, error) {
-	result := map[string]*ValidatedData{}
-	validationMap := map[string]*common.ValidationDataEnvelope{}
-
-	rawData, err := c.apiClient.GetUserData(
-		ctx, connect.NewRequest(
-			&partner.GetUserDataRequest{
-				UserPublicKey: base58.Encode(userPK),
-				IncludeValues: true,
-			},
-		),
-	)
-	if err != nil {
-		return result, err
-	}
-
-	sk, err := c.secretKey(ctx, userPK)
-	if err != nil {
-		return result, err
-	}
-
-	for _, v := range rawData.Msg.ValidationData {
-		var envelope common.ValidationDataEnvelope
-		if err := proto.Unmarshal(v.Payload, &envelope); err != nil {
-			return result, err
-		}
-
-		// TODO: Validate the signature of the envelope
-
-		validationMap[envelope.DataHash] = &envelope
-	}
-
-	for _, v := range rawData.Msg.UserData {
-		var envelope common.UserDataEnvelope
-		if err := proto.Unmarshal(v.Payload, &envelope); err != nil {
-			return result, err
-		}
-
-		// TODO: Validate the signature of the envelope
-
-		decrypted, err := encryption.DecryptUserData(sk, envelope.EncryptedValue)
-		if err != nil {
-			return result, err
-		}
-
-		status := common.ValidationStatus_VALIDATION_STATUS_UNSPECIFIED
-		if validationData, exists := validationMap[v.Hash]; exists {
-			status = validationData.Status
-		}
-
-		result[v.Hash] = &ValidatedData{
-			UserData: decrypted,
-			Status:   status,
-			Hash:     v.Hash,
-			Type:     envelope.Type,
-		}
-	}
-
-	return result, nil
-}
-
-func (c *kycPartnerClient) SetValidationResult(ctx context.Context, hash string, status common.ValidationStatus) error {
-	envelope := &common.ValidationDataEnvelope{
-		DataHash:           hash,
-		ValidatorPublicKey: base58.Encode(c.publicKey),
-		Status:             status,
-		ValidatedAt:        timestamppb.Now(),
-	}
-	payload, err := proto.Marshal(envelope)
-	if err != nil {
-		return err
-	}
-	signature := encryption.SignMessage(c.privateKey, payload)
-
-	in := &partner.SetValidationDataRequest{
-		Payload:   payload,
-		Signature: signature,
-	}
-	_, err = c.apiClient.SetValidationData(ctx, connect.NewRequest(in))
-
-	return err
-}
-
-func (c *kycPartnerClient) Encrypt(
-	ctx context.Context,
-	user ed25519.PublicKey,
-	data []byte,
-) (encrypted []byte, hash string, err error) {
-	sk, err := c.secretKey(ctx, user)
-	if err != nil {
-		return nil, "", err
-	}
-
-	encrypted, hash, err = encryption.Encrypt(sk, data)
-	if err != nil {
-		return nil, "", err
-	}
-	return encrypted, hash, nil
-}
-
-func (c *kycPartnerClient) CreateKycStatus(ctx context.Context, input *common.KycEnvelope) (string, error) {
-	data, err := proto.Marshal(input)
-	if err != nil {
-		return "", err
-	}
-
-	signature := encryption.SignMessage(c.privateKey, data)
-
-	in := &partner.CreateKycStatusRequest{
-		Payload:   data,
-		Signature: signature,
-	}
-
-	resp, err := c.apiClient.CreateKycStatus(ctx, connect.NewRequest(in))
-	if err != nil {
-		return "", err
-	}
-
-	return resp.Msg.KycId, nil
-}
-
-func (c *kycPartnerClient) GetKycStatus(ctx context.Context, input *GetKycStatusInput) (
-	*common.KycEnvelope,
-	error,
-) {
-	in := &partner.GetKycStatusRequest{
-		Country:            input.Country,
-		ValidatorPublicKey: base58.Encode(c.publicKey),
-		UserPublicKey:      base58.Encode(input.UserPK),
-	}
-
-	resp, err := c.apiClient.GetKycStatus(ctx, connect.NewRequest(in))
-	if err != nil {
-		return nil, err
-	}
-
-	var envelope common.KycEnvelope
-	if err := proto.Unmarshal(resp.Msg.Payload, &envelope); err != nil {
-		return nil, err
-	}
-
-	// TODO: Validate the signature of the envelope
-
-	return &envelope, nil
-}
-
-func (c *kycPartnerClient) UpdateKycStatus(ctx context.Context, input *UpdateKycStatusInput) error {
-	data, err := proto.Marshal(input.Data)
-	if err != nil {
-		return err
-	}
-
-	signature := encryption.SignMessage(c.privateKey, data)
-
-	in := &partner.UpdateKycStatusRequest{
-		KycId:     input.KycID,
-		Payload:   data,
-		Signature: signature,
-	}
-
-	_, err = c.apiClient.UpdateKycStatus(ctx, connect.NewRequest(in))
-	if err != nil {
-		return err
-	}
-
-	return nil
+func (c *kycPartnerClient) sign(data []byte) []byte {
+	return encryption.SignMessage(c.privateKey, data)
 }
 
 func (c *kycPartnerClient) secretKey(ctx context.Context, user ed25519.PublicKey) ([32]byte, error) {
-	rawData, err := c.apiClient.GetInfo(
+	rawData, err := c.storageClient.GetInfo(
 		ctx,
 		connect.NewRequest(&partner.GetInfoRequest{PublicKey: base58.Encode(user)}),
 	)

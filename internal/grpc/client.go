@@ -5,26 +5,25 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
+	opc "go.brij.fi/protos/brij/orders/v1/partner/partnerconnect"
 	owc "go.brij.fi/protos/brij/orders/v1/wallet/walletconnect"
 	spc "go.brij.fi/protos/brij/storage/v1/partner/partnerconnect"
 	swc "go.brij.fi/protos/brij/storage/v1/wallet/walletconnect"
 	"go.brij.fi/protos/brij/verifier/v1/v1connect"
 )
 
-type Client struct {
-	spc.PartnerServiceClient
+func NewPartnerStorageClient(host string, token string) spc.PartnerServiceClient {
+	return spc.NewPartnerServiceClient(
+		http.DefaultClient, host,
+		connect.WithInterceptors(newAuthInterceptor(token)),
+	)
 }
 
-func NewClient(host string, token string) (*Client, error) {
-	client := &Client{
-		PartnerServiceClient: spc.NewPartnerServiceClient(
-			http.DefaultClient,
-			host,
-			connect.WithInterceptors(newAuthInterceptor(token)),
-		),
-	}
-
-	return client, nil
+func NewPartnerOrdersClient(host string, token string) opc.PartnerServiceClient {
+	return opc.NewPartnerServiceClient(
+		http.DefaultClient, host,
+		connect.WithInterceptors(newAuthInterceptor(token)),
+	)
 }
 
 func NewWalletStorageClient(host string, token string) swc.WalletServiceClient {
