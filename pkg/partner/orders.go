@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"fmt"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/btcsuite/btcutil/base58"
@@ -23,6 +24,7 @@ type Order struct {
 	Type              common.RampType
 	FiatAmount        *common.Amount
 	CryptoAmount      *common.Amount
+	CreatedAt         time.Time
 }
 
 type GetOrderInput struct {
@@ -190,10 +192,15 @@ func (c *kycPartnerClient) CompleteOffRampOrder(ctx context.Context, in *Complet
 }
 
 func orderFromPayload(payload *partner.GetOrderResponse) (*Order, error) {
+	created, err := time.Parse(time.RFC3339, payload.Created)
+	if err != nil {
+		return nil, err
+	}
 	order := &Order{
 		Status:        payload.Status,
 		ExternalID:    payload.ExternalId,
 		UserPublicKey: base58.Decode(payload.UserPublicKey),
+		CreatedAt:     created,
 	}
 
 	rampType := payload.Type
