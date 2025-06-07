@@ -30,6 +30,25 @@ type GetOrderInput struct {
 	ExternalID string
 }
 
+func (c *kycPartnerClient) GetOrders(ctx context.Context) ([]*Order, error) {
+	request := &partner.GetOrdersRequest{}
+	resp, err := c.ordersClient.GetOrders(ctx, connect.NewRequest(request))
+	if err != nil {
+		return nil, err
+	}
+
+	orders := make([]*Order, 0, len(resp.Msg.Orders))
+	for _, o := range resp.Msg.Orders {
+		order, err := orderFromPayload(o)
+		if err != nil {
+			return orders, err
+		}
+		orders = append(orders, order)
+	}
+
+	return orders, nil
+}
+
 func (c *kycPartnerClient) GetOrder(ctx context.Context, in *GetOrderInput) (*Order, error) {
 	request := &partner.GetOrderRequest{
 		OrderId:    in.OrderID,
@@ -41,55 +60,9 @@ func (c *kycPartnerClient) GetOrder(ctx context.Context, in *GetOrderInput) (*Or
 		return nil, err
 	}
 
-	order := &Order{
-		Status:        resp.Msg.Status,
-		ExternalID:    resp.Msg.ExternalId,
-		UserPublicKey: base58.Decode(resp.Msg.UserPublicKey),
-	}
-
-	t := resp.Msg.Type
-	if t == orderscommon.RampType_RAMP_TYPE_ON_RAMP {
-		order.Type = common.RampTypeOnRamp
-
-		// TODO: Validate signature
-
-		var payload orderscommon.OnRampOrderUserEnvelope
-		if err := proto.Unmarshal(resp.Msg.UserPayload, &payload); err != nil {
-			return nil, err
-		}
-
-		order.OrderID = payload.OrderId
-		order.UserWalletAddress = base58.Decode(payload.UserWalletAddress)
-		order.FiatAmount = &common.Amount{
-			Value:    payload.FiatAmount,
-			Currency: payload.FiatCurrency,
-		}
-		order.CryptoAmount = &common.Amount{
-			Value:    payload.CryptoAmount,
-			Currency: payload.CryptoCurrency,
-		}
-	} else if t == orderscommon.RampType_RAMP_TYPE_OFF_RAMP {
-		order.Type = common.RampTypeOffRamp
-
-		// TODO: Validate signature
-
-		var payload orderscommon.OffRampOrderUserEnvelope
-		if err := proto.Unmarshal(resp.Msg.UserPayload, &payload); err != nil {
-			return nil, err
-		}
-
-		order.OrderID = payload.OrderId
-		order.UserWalletAddress = base58.Decode(payload.UserWalletAddress)
-		order.FiatAmount = &common.Amount{
-			Value:    payload.FiatAmount,
-			Currency: payload.FiatCurrency,
-		}
-		order.CryptoAmount = &common.Amount{
-			Value:    payload.CryptoAmount,
-			Currency: payload.CryptoCurrency,
-		}
-	} else {
-		return nil, fmt.Errorf("unknown ramp type: %v", t)
+	order, err := orderFromPayload(resp.Msg)
+	if err != nil {
+		return nil, err
 	}
 
 	return order, nil
@@ -214,4 +187,60 @@ func (c *kycPartnerClient) CompleteOffRampOrder(ctx context.Context, in *Complet
 
 	_, err := c.ordersClient.CompleteOrder(ctx, connect.NewRequest(request))
 	return err
+}
+
+func orderFromPayload(payload *partner.GetOrderResponse) (*Order, error) {
+	order := &Order{
+		Status:        payload.Status,
+		ExternalID:    payload.ExternalId,
+		UserPublicKey: base58.Decode(payload.UserPublicKey),
+	}
+
+	rampType := payload.Type
+	data := payload.UserPayload
+	if rampType == orderscommon.RampType_RAMP_TYPE_ON_RAMP {
+		order.Type = common.RampTypeOnRamp
+
+		// TODO: Validate signature
+
+		var payload orderscommon.OnRampOrderUserEnvelope
+		if err := proto.Unmarshal(data, &payload); err != nil {
+			return nil, err
+		}
+
+		order.OrderID = payload.OrderId
+		order.UserWalletAddress = base58.Decode(payload.UserWalletAddress)
+		order.FiatAmount = &common.Amount{
+			Value:    payload.FiatAmount,
+			Currency: payload.FiatCurrency,
+		}
+		order.CryptoAmount = &common.Amount{
+			Value:    payload.CryptoAmount,
+			Currency: payload.CryptoCurrency,
+		}
+	} else if rampType == orderscommon.RampType_RAMP_TYPE_OFF_RAMP {
+		order.Type = common.RampTypeOffRamp
+
+		// TODO: Validate signature
+
+		var payload orderscommon.OffRampOrderUserEnvelope
+		if err := proto.Unmarshal(data, &payload); err != nil {
+			return nil, err
+		}
+
+		order.OrderID = payload.OrderId
+		order.UserWalletAddress = base58.Decode(payload.UserWalletAddress)
+		order.FiatAmount = &common.Amount{
+			Value:    payload.FiatAmount,
+			Currency: payload.FiatCurrency,
+		}
+		order.CryptoAmount = &common.Amount{
+			Value:    payload.CryptoAmount,
+			Currency: payload.CryptoCurrency,
+		}
+	} else {
+		return nil, fmt.Errorf("unknown ramp type: %v", rampType)
+	}
+
+	return order, nil
 }

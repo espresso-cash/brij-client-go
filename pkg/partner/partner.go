@@ -27,6 +27,7 @@ type Client interface {
 	GetKycStatus(ctx context.Context, input *GetKycStatusInput) (*storagecommon.KycEnvelope, error)
 	UpdateKycStatus(ctx context.Context, input *UpdateKycStatusInput) error
 
+	GetOrders(ctx context.Context) ([]*Order, error)
 	GetOrder(ctx context.Context, input *GetOrderInput) (*Order, error)
 	RejectOrder(ctx context.Context, in *RejectOrderInput) error
 	AcceptOnRampOrder(ctx context.Context, in *AcceptOnRampOrderInput) error
