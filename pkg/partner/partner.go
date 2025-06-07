@@ -40,7 +40,6 @@ type Client interface {
 type kycPartnerClient struct {
 	privateKey ed25519.PrivateKey
 	publicKey  ed25519.PublicKey
-	token      string
 
 	storageClient spc.PartnerServiceClient
 	ordersClient  opc.PartnerServiceClient
@@ -52,24 +51,31 @@ func NewClient(privateKey ed25519.PrivateKey, cfg *config.Config) (Client, error
 		publicKey:  privateKey.Public().(ed25519.PublicKey),
 	}
 
-	token := jwt.NewWithClaims(
-		jwt.SigningMethodEdDSA,
-		jwt.MapClaims{"iss": base58.Encode(c.publicKey), "aud": config.AudStorage},
-	)
-	tokenString, err := token.SignedString(c.privateKey)
+	storageToken, err := c.createToken(config.AudStorage)
 	if err != nil {
 		return nil, err
 	}
+	c.storageClient = grpc.NewPartnerStorageClient(cfg.StorageBaseUrl, storageToken)
 
-	c.token = tokenString
-	c.storageClient = grpc.NewPartnerStorageClient(cfg.StorageBaseUrl, tokenString)
-	c.ordersClient = grpc.NewPartnerOrdersClient(cfg.OrderBaseUrl, tokenString)
+	ordersToken, err := c.createToken(config.AudOrders)
+	if err != nil {
+		return nil, err
+	}
+	c.ordersClient = grpc.NewPartnerOrdersClient(cfg.OrderBaseUrl, ordersToken)
 
 	return c, nil
 }
 
 func (c *kycPartnerClient) PublicKey() ed25519.PublicKey {
 	return c.publicKey
+}
+
+func (c *kycPartnerClient) createToken(aud string) (string, error) {
+	token := jwt.NewWithClaims(
+		jwt.SigningMethodEdDSA,
+		jwt.MapClaims{"iss": base58.Encode(c.publicKey), "aud": aud},
+	)
+	return token.SignedString(c.privateKey)
 }
 
 func (c *kycPartnerClient) sign(data []byte) []byte {
