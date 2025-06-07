@@ -45,7 +45,7 @@ type kycPartnerClient struct {
 	ordersClient  opc.PartnerServiceClient
 }
 
-func NewClient(privateKey ed25519.PrivateKey, host string) (Client, error) {
+func NewClient(privateKey ed25519.PrivateKey, cfg *config.Config) (Client, error) {
 	c := &kycPartnerClient{
 		privateKey: privateKey,
 		publicKey:  privateKey.Public().(ed25519.PublicKey),
@@ -61,8 +61,8 @@ func NewClient(privateKey ed25519.PrivateKey, host string) (Client, error) {
 	}
 
 	c.token = tokenString
-	c.storageClient = grpc.NewPartnerStorageClient(host, tokenString)
-	c.ordersClient = grpc.NewPartnerOrdersClient(host, tokenString)
+	c.storageClient = grpc.NewPartnerStorageClient(cfg.StorageBaseUrl, tokenString)
+	c.ordersClient = grpc.NewPartnerOrdersClient(cfg.OrderBaseUrl, tokenString)
 
 	return c, nil
 }
