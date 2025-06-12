@@ -16,15 +16,22 @@ import (
 )
 
 type Order struct {
-	OrderID           string
-	ExternalID        string
-	Status            string
-	UserPublicKey     ed25519.PublicKey
-	UserWalletAddress ed25519.PublicKey
-	Type              common.RampType
-	FiatAmount        *common.Amount
-	CryptoAmount      *common.Amount
-	CreatedAt         time.Time
+	OrderID             string
+	ExternalID          string
+	Status              string
+	UserPublicKey       ed25519.PublicKey
+	UserWalletAddress   ed25519.PublicKey
+	Type                common.RampType
+	FiatAmount          *common.Amount
+	CryptoAmount        *common.Amount
+	PartnerPublicKey    string
+	WalletPublicKey     string
+	WalletFeeAddress    string
+	WalletFeeAmount     float64
+	PlatformFeeAddress  string
+	PlatformFeeAmount   float64
+	PartnerCryptoAmount float64
+	CreatedAt           time.Time
 }
 
 type GetOrderInput struct {
@@ -225,6 +232,13 @@ func orderFromPayload(payload *partner.GetOrderResponse) (*Order, error) {
 			Value:    payload.CryptoAmount,
 			Currency: payload.CryptoCurrency,
 		}
+		order.PartnerPublicKey = payload.PartnerPublicKey
+		order.WalletPublicKey = payload.WalletPublicKey
+		order.WalletFeeAddress = payload.WalletFeeAddress
+		order.WalletFeeAmount = payload.WalletFeeAmount
+		order.PlatformFeeAddress = payload.PlatformFeeAddress
+		order.PlatformFeeAmount = payload.PlatformFeeAmount
+		order.PartnerCryptoAmount = payload.PartnerCryptoAmount
 	} else if rampType == orderscommon.RampType_RAMP_TYPE_OFF_RAMP {
 		order.Type = common.RampTypeOffRamp
 
@@ -245,6 +259,13 @@ func orderFromPayload(payload *partner.GetOrderResponse) (*Order, error) {
 			Value:    payload.CryptoAmount,
 			Currency: payload.CryptoCurrency,
 		}
+		order.PartnerPublicKey = payload.PartnerPublicKey
+		order.WalletPublicKey = payload.WalletPublicKey
+		order.WalletFeeAddress = payload.WalletFeeAddress
+		order.WalletFeeAmount = payload.WalletFeeAmount
+		order.PlatformFeeAddress = payload.PlatformFeeAddress
+		order.PlatformFeeAmount = payload.PlatformFeeAmount
+		order.PartnerCryptoAmount = payload.PartnerCryptoAmount
 	} else {
 		return nil, fmt.Errorf("unknown ramp type: %v", rampType)
 	}
