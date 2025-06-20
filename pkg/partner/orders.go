@@ -114,6 +114,7 @@ func (c *kycPartnerClient) AcceptOnRampOrder(ctx context.Context, in *AcceptOnRa
 		ExternalId: in.ExternalID,
 		Payload:    payload,
 		Signature:  c.sign(payload),
+		OrderId:    in.OrderID,
 	}
 
 	_, err = c.ordersClient.AcceptOrder(ctx, connect.NewRequest(request))
@@ -140,6 +141,7 @@ func (c *kycPartnerClient) AcceptOffRampOrder(ctx context.Context, in *AcceptOff
 		Payload:    payload,
 		Signature:  c.sign(payload),
 		ExternalId: in.ExternalID,
+		OrderId:    in.OrderID,
 	}
 
 	if in.CryptoWalletAddress != nil {
