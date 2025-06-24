@@ -177,8 +177,9 @@ type CompleteOnRampOrderInput struct {
 
 func (c *kycPartnerClient) CompleteOnRampOrder(ctx context.Context, in *CompleteOnRampOrderInput) error {
 	request := &partner.CompleteOrderRequest{
-		OrderId:    in.OrderID,
-		ExternalId: in.ExternalID,
+		OrderId:       in.OrderID,
+		ExternalId:    in.ExternalID,
+		TransactionId: in.TransactionID,
 	}
 
 	_, err := c.ordersClient.CompleteOrder(ctx, connect.NewRequest(request))
@@ -273,4 +274,33 @@ func orderFromPayload(payload *partner.GetOrderResponse) (*Order, error) {
 	}
 
 	return order, nil
+}
+
+type GenerateTransactionInput struct {
+	OrderID              string
+	ExternalID           string
+	FundingWalletAddress ed25519.PublicKey
+}
+
+type GenerateTransactionResponse struct {
+	Transaction string
+	Reference   string
+}
+
+func (c *kycPartnerClient) GenerateTransaction(ctx context.Context, in *GenerateTransactionInput) (*GenerateTransactionResponse, error) {
+	request := &partner.GenerateTransactionRequest{
+		OrderId:              in.OrderID,
+		ExternalId:           in.ExternalID,
+		FundingWalletAddress: base58.Encode(in.FundingWalletAddress),
+	}
+
+	resp, err := c.ordersClient.GenerateTransaction(ctx, connect.NewRequest(request))
+	if err != nil {
+		return nil, err
+	}
+
+	return &GenerateTransactionResponse{
+		Transaction: resp.Msg.Transaction,
+		Reference:   resp.Msg.Reference,
+	}, nil
 }

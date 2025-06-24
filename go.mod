@@ -8,7 +8,7 @@ require (
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/stretchr/testify v1.10.0
-	go.brij.fi/protos v0.26.0
+	go.brij.fi/protos v0.28.0
 	golang.org/x/crypto v0.39.0
 	google.golang.org/protobuf v1.36.6
 )
