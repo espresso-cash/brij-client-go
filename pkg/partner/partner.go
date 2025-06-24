@@ -35,6 +35,7 @@ type Client interface {
 	FailOrder(ctx context.Context, in *FailOrderInput) error
 	CompleteOnRampOrder(ctx context.Context, in *CompleteOnRampOrderInput) error
 	CompleteOffRampOrder(ctx context.Context, in *CompleteOffRampOrderInput) error
+	GenerateTransaction(ctx context.Context, in *GenerateTransactionInput) (*GenerateTransactionResponse, error)
 }
 
 type kycPartnerClient struct {
