@@ -144,10 +144,6 @@ func (c *kycPartnerClient) AcceptOffRampOrder(ctx context.Context, in *AcceptOff
 		OrderId:    in.OrderID,
 	}
 
-	if in.CryptoWalletAddress != nil {
-		request.ExternalId = base58.Encode(in.CryptoWalletAddress)
-	}
-
 	_, err = c.ordersClient.AcceptOrder(ctx, connect.NewRequest(request))
 	return err
 }
